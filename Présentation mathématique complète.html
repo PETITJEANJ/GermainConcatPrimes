@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PGC — Mindmap hors‑ligne (SVG interactif)</title>
+<style>
+  html, body { height:100%; margin:0; background:#0b0f14; color:#e7e7e7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+  #toolbar{position:fixed;left:12px;top:10px;z-index:10;display:flex;gap:8px;align-items:center;background:#121820;border:1px solid #1e293b;border-radius:10px;padding:8px 10px;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  #toolbar button{background:#1e293b;color:#e7e7e7;border:1px solid #334155;border-radius:8px;padding:6px 10px;cursor:pointer}
+  #toolbar button:hover{background:#0ea5e9;border-color:#0ea5e9}
+  #container{width:100vw;height:100vh;overflow:hidden}
+  svg{width:100%;height:100%;touch-action:none;user-select:none}
+  .link{stroke:#334155;stroke-width:1.4;fill:none}
+  .node circle{fill:#0ea5e9;stroke:#e2e8f0;stroke-width:1.2}
+  .node.collapsed circle{fill:#f59e0b}
+  .label{font-size:14px;fill:#e7e7e7;dominant-baseline:middle;paint-order:stroke;stroke:#0b0f14;stroke-width:3}
+  .hint{position:fixed;right:12px;bottom:8px;opacity:.6;font-size:12px}
+  .badge{fill:#1f2937; stroke:#475569; stroke-width:1; rx:6; ry:6}
+  .badgeText{font-size:11px; fill:#cbd5e1}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="fit">Ajuster</button>
+  <button id="expandAll">Tout ouvrir</button>
+  <button id="collapseAll">Tout fermer</button>
+</div>
+<div id="container">
+  <svg id="svg" viewBox="-600 -600 1200 1200">
+    <g id="viewport"></g>
+  </svg>
+</div>
+<div class="hint">Astuce : molette = zoom • drag = déplacer • clic sur un nœud = plier/déplier</div>
+
+<script>
+// --------- Données (arbre) ---------
+const data = {
+  label: "🧮 Nombres premiers issus de la concaténation de nombres premiers de Germain (PGC)",
+  children: [
+    {
+      label: "🌱 Idée fondatrice",
+      children: [
+        { label: "Définition: p premier tel que 2p+1 aussi premier (Sophie Germain)" },
+        { label: "Exemples: 2, 3, 5, 11, 23, 29, 41, 53, 83, 89, 113, …" },
+        { label: "Concaténation croissante → méga-séquence décimale: 2351123294153…" },
+        { label: "Extraction de sous-chaînes contiguës qui sont elles-mêmes premières" },
+        { label: "Nom proposé : Primes de Germain concaténés (PGC)" }
+      ]
+    },
+    {
+      label: "🧩 Construction formelle",
+      children: [
+        { label: "G = {p1, p2, …} = suite des premiers de Germain" },
+        { label: "S = Concat(p1, p2, …) (écriture décimale)" },
+        { label: "PGC = tout N = S[a:b] tel que N est premier" }
+      ]
+    },
+    {
+      label: "🔍 Exemples concrets",
+      children: [
+        { label: "Grand premier (539 chiffres)",
+          children: [
+            { label: "33594194314434915095936416536596837197437618099119531013101910311049110312231229128913291349136113631367137313731389139914011401142914891499150115231529155915691573159716111677169316991717172117331733174117511781181118371843186119071913197319931997199920332087209921132147215321632167217921972203223922572261229122972381239524012403241124432447245124532453252125292603261526272629263326472677268726892719274927512771279128332849285728912949296329732977299329833003301930493059306130973109311931213123131269313731331337133313391369139714071" }
+          ]
+        },
+        { label: "Autre grand premier (300 chiffres)",
+          children: [
+            { label: "731791912332392512812933594194314434915095936416536596837197437618099119531013101910311049110312231229128913291349136113631367137313731389139914011401142914891499150115231529155915691573159716111677169316991717172117331733174117511781181118371843186119071913197319931997199920332087209921132147215321" }
+          ]
+        }
+      ]
+    },
+    {
+      label: "🧠 Nature et intérêt",
+      children: [
+        { label: "Métastructure : premiers dérivés d'une classe liée (Sophie Germain)" },
+        { label: "Génération non arithmétique mais symbolique/structurelle (concat → extrait)" }
+      ]
+    },
+    {
+      label: "⚖️ Propriétés observées (empiriques)",
+      children: [
+        { label: "Pas de régularité simple dans S" },
+        { label: "Concentrations possibles près des frontières entre nombres concaténés" },
+        { label: "Motifs : 37–41–43, 167–173–179, etc." },
+        { label: "Aucune loi de densité connue ; exploration computationnelle" }
+      ]
+    },
+    {
+      label: "🧬 Formalisation proposée",
+      children: [
+        { label: "G'(n) = n-ième PGC détecté dans S" },
+        { label: "Suite {G'(1), G'(2), …} : candidate OEIS" },
+        { label: "Réfs proches : A005384 (Germain), A167205 (concatenated primes), A007542" }
+      ]
+    },
+    {
+      label: "🔭 Extensions possibles",
+      children: [
+        { label: "Changer la famille mère : Twin primes, Mersenne, Safe primes" },
+        { label: "Étudier : densité, distribution des longueurs, positions, corrélations" }
+      ]
+    },
+    {
+      label: "🧪 Validation computationnelle",
+      children: [
+        { label: "Tests de primalité : Miller–Rabin multi-bases (2…29)" },
+        { label: "Pseudo-code : générer G, S = concat(G), tester N = S[a:b]" }
+      ]
+    },
+    {
+      label: "🧾 Nom & mots-clés",
+      children: [
+        { label: "Nom : Primes de Germain concaténés (PGC)" },
+        { label: "Mots-clés : prime, concatenation, Sophie Germain, emergent primes, substrings, OEIS-candidate" }
+      ]
+    },
+    {
+      label: "🔗 Publication & diffusion",
+      children: [
+        { label: "OEIS (proposé) : “Primes derived from the concatenation of Sophie Germain primes”" },
+        { label: "Mindmap (GitHub Pages), Note PDF (ResearchGate/Academia), Discussion (Reddit/Mastodon)" }
+      ]
+    },
+    {
+      label: "✍️ Crédit",
+      children: [
+        { label: "Auteur : Jacques Petitjean (France), 2025" },
+        { label: "Statut : Concept original + exemples empiriques" }
+      ]
+    }
+  ]
+};
+
+// --------- Mise en page radiale minimaliste ---------
+function radialLayout(root, radiusStep=120) {
+  const leaves = [];
+  function dfs(node, depth=0) {
+    node.depth = depth;
+    if (!node.children || node.children.length === 0) leaves.push(node);
+    (node.children||[]).forEach(c=>dfs(c, depth+1));
+  }
+  dfs(root);
+  // Répartir les feuilles sur 2π et propager les angles vers le haut
+  leaves.forEach((leaf, i) => { leaf.theta = (i / leaves.length) * Math.PI * 2; });
+  function assignAngles(node){
+    if (node.theta == null) {
+      const ch = (node.children||[]).filter(c=>c._visible!==false);
+      if (ch.length) {
+        ch.forEach(assignAngles);
+        const min = Math.min(...ch.map(c=>c.theta));
+        const max = Math.max(...ch.map(c=>c.theta));
+        node.theta = (min + max) / 2;
+      } else node.theta = 0;
+    }
+  }
+  assignAngles(root);
+  function assignPos(node){
+    node.r = node.depth * radiusStep;
+    node.x = node.r * Math.cos(node.theta);
+    node.y = node.r * Math.sin(node.theta);
+    (node.children||[]).filter(c=>c._visible!==false).forEach(assignPos);
+  }
+  assignPos(root);
+  return root;
+}
+
+// --------- Construction de la structure avec états ---------
+function buildState(node, parent=null){
+  const n = { label: node.label, parent, children: [], collapsed:false, _visible:true };
+  if (node.children) n.children = node.children.map(c=>buildState(c, n));
+  return n;
+}
+const stateRoot = buildState(data);
+
+// --------- SVG helpers ---------
+const svg = document.getElementById('svg');
+const g = document.getElementById('viewport');
+let zoom = 1, tx = 0, ty = 0;
+
+// Pan / Zoom
+let isPanning=false, px=0, py=0;
+svg.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const scale = Math.exp(-e.deltaY * 0.001);
+  const pt = screenToWorld(e.clientX, e.clientY);
+  zoom *= scale;
+  tx = pt.x - (pt.x - tx) * scale;
+  ty = pt.y - (pt.y - ty) * scale;
+  updateTransform();
+});
+svg.addEventListener('pointerdown', e=>{ isPanning=true; px=e.clientX; py=e.clientY; svg.setPointerCapture(e.pointerId); });
+svg.addEventListener('pointermove', e=>{
+  if(!isPanning) return;
+  const dx = (e.clientX - px) / zoom;
+  const dy = (e.clientY - py) / zoom;
+  tx += dx; ty += dy; px=e.clientX; py=e.clientY; updateTransform();
+});
+svg.addEventListener('pointerup', ()=>{ isPanning=false; });
+
+function screenToWorld(sx, sy){
+  const rect = svg.getBoundingClientRect();
+  const x = (sx - rect.left) / rect.width * svg.viewBox.baseVal.width + svg.viewBox.baseVal.x;
+  const y = (sy - rect.top)  / rect.height* svg.viewBox.baseVal.height+ svg.viewBox.baseVal.y;
+  // inverse transform
+  return { x: (x - tx) / zoom, y: (y - ty) / zoom };
+}
+function updateTransform(){
+  g.setAttribute('transform', `translate(${tx},${ty}) scale(${zoom})`);
+}
+
+// --------- Mesure texte (approx) ---------
+const tmp = document.createElementNS("http://www.w3.org/2000/svg","text");
+tmp.setAttribute('class','label');
+tmp.style.visibility='hidden';
+g.appendChild(tmp);
+function textWidth(str){
+  tmp.textContent = str;
+  const bb = tmp.getBBox();
+  return bb.width + 10;
+}
+
+// --------- Rendu ---------
+function layoutVisible(root){
+  // cacher sous-arbres si collapsed
+  function applyVisibility(n){
+    if (n.collapsed && n.children) {
+      n.children.forEach(c => { c._visible = false; cascade(c,false); });
+    } else {
+      n._visible = true;
+      (n.children||[]).forEach(c => { c._visible = true; applyVisibility(c); });
+    }
+  }
+  function cascade(n, vis){ n._visible = vis; (n.children||[]).forEach(c=>cascade(c, vis)); }
+  applyVisibility(root);
+  radialLayout(root, 120);
+}
+
+function render(){
+  layoutVisible(stateRoot);
+  // Clear
+  while (g.firstChild) g.removeChild(g.firstChild);
+
+  // Collect nodes visible
+  const nodes = [];
+  const links = [];
+  (function collect(n){
+    if (n._visible || n===stateRoot) nodes.push(n);
+    (n.children||[]).forEach(c=>{
+      if (c._visible || n===stateRoot) {
+        links.push({source:n, target:c, visible:(c._visible!==false)});
+      }
+      collect(c);
+    });
+  })(stateRoot);
+
+  // Draw links
+  links.forEach(l=>{
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute('class','link');
+    const sx = l.source.x, sy = l.source.y, tx_ = l.target.x, ty_ = l.target.y;
+    const mx = (sx+tx_)/2, my=(sy+ty_)/2;
+    const d = `M ${sx} ${sy} Q ${mx} ${my} ${tx_} ${ty_}`;
+    path.setAttribute('d', d);
+    g.appendChild(path);
+  });
+
+  // Draw nodes + labels
+  nodes.forEach(n=>{
+    const gp = document.createElementNS("http://www.w3.org/2000/svg","g");
+    gp.setAttribute('class','node' + (n.collapsed?' collapsed':''));
+    gp.setAttribute('transform', `translate(${n.x},${n.y})`);
+    // circle
+    const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute('r', 7);
+    gp.appendChild(c);
+
+    // label background badge for long text
+    const label = n.label;
+    const w = Math.min(560, textWidth(label));
+    const pad = 6;
+    const rx = 10;
+    const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rect.setAttribute('class','badge');
+    rect.setAttribute('x', 12);
+    rect.setAttribute('y', -16);
+    rect.setAttribute('width', w + 2*pad);
+    rect.setAttribute('height', 26);
+    rect.setAttribute('rx', rx); rect.setAttribute('ry', rx);
+    gp.appendChild(rect);
+
+    // text
+    const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute('class','label');
+    t.setAttribute('x', 12+pad);
+    t.setAttribute('y', 0);
+    t.textContent = label.length>240 ? label.slice(0,240)+'…' : label;
+    gp.appendChild(t);
+
+    // click to toggle
+    gp.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if (n.children && n.children.length){
+        n.collapsed = !n.collapsed;
+        render();
+      }
+    });
+    g.appendChild(gp);
+  });
+}
+
+function fitView(){
+  // Fit all elements
+  const bb = g.getBBox();
+  const vb = svg.viewBox.baseVal;
+  const scaleX = vb.width / (bb.width + 120);
+  const scaleY = vb.height/ (bb.height+ 120);
+  zoom = Math.min(scaleX, scaleY);
+  tx = -(bb.x + bb.width/2) + (vb.x + vb.width/2)/zoom;
+  ty = -(bb.y + bb.height/2)+ (vb.y + vb.height/2)/zoom;
+  updateTransform();
+}
+
+render();
+fitView();
+
+// Toolbar actions
+document.getElementById('fit').addEventListener('click', fitView);
+document.getElementById('expandAll').addEventListener('click', ()=>{ walk(stateRoot, n=>n.collapsed=false); render(); fitView(); });
+document.getElementById('collapseAll').addEventListener('click', ()=>{ walk(stateRoot, n=>{ if(n!==stateRoot) n.collapsed=true; }); render(); fitView(); });
+
+function walk(n, f){ f(n); (n.children||[]).forEach(c=>walk(c,f)); }
+</script>
+</body>
+</html>
